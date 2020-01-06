@@ -31,7 +31,6 @@ from sugar3.graphics.alert import Alert, ConfirmationAlert
 from sugar3.graphics import style
 
 from toolbar_utils import button_factory, separator_factory, radio_factory
-from utils import json_load, json_dump
 from aplay import aplay
 from exportpdf import save_pdf
 from arecord import Arecord
@@ -51,10 +50,6 @@ _logger = logging.getLogger('story-activity')
 PLACEHOLDER = _('Write your story here.')
 PLACEHOLDER1 = _('Begin your story here.')
 PLACEHOLDER2 = _('Continue your story here.')
-
-SERVICE = 'org.sugarlabs.StoryActivity'
-IFACE = SERVICE
-PATH = '/org/sugarlabs/StoryActivity'
 
 
 class StoryActivity(activity.Activity):
@@ -148,7 +143,6 @@ class StoryActivity(activity.Activity):
 
         self._game = Game(self._canvas, parent=self, path=self._path,
                           root=activity.get_bundle_path(), colors=self._colors)
-        self._setup_presence_service()
 
         if 'mode' in self.metadata:
             self._game.set_mode(self.metadata['mode'])
@@ -172,6 +166,13 @@ class StoryActivity(activity.Activity):
             self._game.new_game()
 
         Gdk.Screen.get_default().connect('size-changed', self._configure_cb)
+
+        self.connect('shared', self._shared_cb)
+
+        self.collab = CollabWrapper(self)
+        self.collab.connect('message', self._message_cb)
+        self.collab.connect('joined', self._joined_cb)
+        self.collab.setup()
 
     def close(self, **kwargs):
         aplay.close()
@@ -319,7 +320,7 @@ class StoryActivity(activity.Activity):
     def _setup_toolbars(self):
         ''' Setup the toolbars. '''
 
-        self.max_participants = 1  # collaboration is unfinished
+        self.max_participants = 2
 
         toolbox = ToolbarBox()
 
@@ -605,75 +606,22 @@ class StoryActivity(activity.Activity):
 
     # Collaboration-related methods
 
-    def _setup_presence_service(self):
-        ''' Setup the Presence Service. '''
-        self.pservice = presenceservice.get_instance()
-        self.initiating = None  # sharing (True) or joining (False)
-
-        owner = self.pservice.get_owner()
-        self.owner = owner
-        self._share = ''
-        self.connect('shared', self._shared_cb)
-        self.connect('joined', self._joined_cb)
-
     def _shared_cb(self, activity):
         ''' Either set up initial share...'''
-        self._new_tube_common(True)
+        _logger.debug('shared')
+        self.after_share_join(True)
 
     def _joined_cb(self, activity):
         ''' ...or join an exisiting share. '''
-        self._new_tube_common(False)
+        _logger.debug('joined')
+        self.after_share_join(False)
 
-    def _new_tube_common(self, sharer):
-        ''' Joining and sharing are mostly the same... '''
-        shared_activity = self.get_shared_activity()
-        if shared_activity is None:
-            _logger.error('Failed to share or join activity')
-            return
-
-        self.initiating = sharer
-        self.waiting_for_hand = not sharer
-
-        self.conn = shared_activity.telepathy_conn
-        self.tubes_chan = shared_activity.telepathy_tubes_chan
-        self.text_chan = shared_activity.telepathy_text_chan
-
-        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].connect_to_signal(
-            'NewTube', self._new_tube_cb)
-
-        if sharer:
-            _logger.debug('This is my activity: making a tube...')
-            self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].OfferDBusTube(
-                SERVICE, {})
-        else:
-            _logger.debug('I am joining an activity: waiting for a tube...')
-            self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].ListTubes(
-                reply_handler=self._list_tubes_reply_cb,
-                error_handler=self._list_tubes_error_cb)
+    def after_share_join(self, sharer):
         self._game.set_sharing(True)
-
-    def _list_tubes_reply_cb(self, tubes):
-        ''' Reply to a list request. '''
-        for tube_info in tubes:
-            self._new_tube_cb(*tube_info)
 
     def _list_tubes_error_cb(self, e):
         ''' Log errors. '''
         _logger.error('Error: ListTubes() failed: %s' % (e))
-
-    def _new_tube_cb(self, id, initiator, type, service, params, state):
-        ''' Create a new tube. '''
-        _logger.debug('New tube: ID=%d initator=%d type=%d service=%s'
-                      ' params=%r state=%d' %
-                      (id, initiator, type, service, params, state))
-
-        if (type == TelepathyGLib.TubeType.DBUS and service == SERVICE):
-            if state == TelepathyGLib.TubeState.LOCAL_PENDING:
-                self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].AcceptDBusTube(id)
-
-            self.collab = CollabWrapper(self)
-            self.collab.message.connect(self.event_received_cb)
-            self.collab.setup()
 
     def _setup_dispatch_table(self):
         ''' Associate tokens with commands. '''
@@ -682,37 +630,36 @@ class StoryActivity(activity.Activity):
             'p': [self._receive_dot_click, 'get a dot click'],
         }
 
-    def event_received_cb(self, collab, buddy, msg):
+    def _message_cb(self, collab, buddy, msg):
         ''' Data from a tube has arrived. '''
         command = msg.get("command")
         if command is None:
             return
-
         payload = msg.get("payload")
         self._processing_methods[command][0](payload)
 
     def send_new_images(self):
         ''' Send a new image grid to all players '''
-        self.send_event("n", json_dump(self._game.save_game()))
+        self.send_event("n", self._game.save_game())
 
     def _receive_new_images(self, payload):
         ''' Sharer can start a new game. '''
-        dot_list = json_load(payload)
+        dot_list = payload
         self._game.restore_game(dot_list)
 
     def send_dot_click(self, dot, color):
         ''' Send a dot click to all the players '''
-        self.send_event("p", json_dump([dot, color]))
+        self.send_event("p", [dot, color])
 
     def _receive_dot_click(self, payload):
         ''' When a dot is clicked, everyone should change its color. '''
-        (dot, color) = json_load(payload)
+        (dot, color) = payload
         self._game.remote_button_press(dot, color)
 
     def send_event(self, command, payload):
         ''' Send event through the tube. '''
-        if hasattr(self, 'chattube') and self.collab is not None:
-            self.collab.SendText(dict(
+        if hasattr(self, 'collab') and self.collab is not None:
+            self.collab.post(dict(
                 command=command,
                 payload=payload,
             ))
