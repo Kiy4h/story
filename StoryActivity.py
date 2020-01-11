@@ -46,6 +46,7 @@ from game import Game
 
 import logging
 _logger = logging.getLogger('story-activity')
+_logger.setLevel(logging.DEBUG)
 
 PLACEHOLDER = _('Write your story here.')
 PLACEHOLDER1 = _('Begin your story here.')
@@ -163,16 +164,27 @@ class StoryActivity(activity.Activity):
             self.check_audio_status()
             self.check_text_status()
         else:
-            self._game.new_game()
+            self._game.new_game(animate=False)
 
         Gdk.Screen.get_default().connect('size-changed', self._configure_cb)
 
         self.connect('shared', self._shared_cb)
+        #self.connect('joined', self._joined_cb)
 
         self.collab = CollabWrapper(self)
         self.collab.connect('message', self._message_cb)
         self.collab.connect('joined', self._joined_cb)
+        self.collab.connect('buddy-joined', self._buddy_joined)
         self.collab.setup()
+
+    def set_data(self, data):
+        _logger.debug('set_data {}'.format(data))
+        self._game.restore_game(data['data'])
+        pass
+
+    def get_data(self):
+        _logger.debug('get_data')
+        return dict(data=self._game.save_game())
 
     def close(self, **kwargs):
         aplay.close()
@@ -619,9 +631,13 @@ class StoryActivity(activity.Activity):
     def after_share_join(self, sharer):
         self._game.set_sharing(True)
 
-    def _list_tubes_error_cb(self, e):
-        ''' Log errors. '''
-        _logger.error('Error: ListTubes() failed: %s' % (e))
+    def _buddy_joined(self, sender, buddy):
+        _logger.debug('sender: {}\nbuddy: {}'.format(sender, buddy))
+        # if buddy == self.collab.owner:
+        #    return
+        logging.debug("Join: %s - %s", buddy.props.nick,
+                      buddy.props.color)
+        self.send_new_images()
 
     def _setup_dispatch_table(self):
         ''' Associate tokens with commands. '''
@@ -644,6 +660,7 @@ class StoryActivity(activity.Activity):
 
     def _receive_new_images(self, payload):
         ''' Sharer can start a new game. '''
+        _logger.debug('_receive_new_images: {}'.format(payload))
         dot_list = payload
         self._game.restore_game(dot_list)
 
@@ -653,16 +670,17 @@ class StoryActivity(activity.Activity):
 
     def _receive_dot_click(self, payload):
         ''' When a dot is clicked, everyone should change its color. '''
+        _logger.debug('_receive_dot_click: {}'.format(payload))
         (dot, color) = payload
         self._game.remote_button_press(dot, color)
 
     def send_event(self, command, payload):
         ''' Send event through the tube. '''
-        if hasattr(self, 'collab') and self.collab is not None:
-            self.collab.post(dict(
-                command=command,
-                payload=payload,
-            ))
+        _logger.debug('send_event: {} {}'.format(command, payload))
+        self.collab.post({
+            'command': command,
+            'payload': payload
+        })
 
 
 def generate_uid():

@@ -524,7 +524,7 @@ class Game():
                 else:
                     self._Dots[i].hide()
 
-    def _all_clear(self):
+    def _all_clear(self, animate=True):
         ''' Things to reinitialize when starting up a new game. '''
         if self._timeout_id is not None:
             GObject.source_remove(self._timeout_id)
@@ -546,7 +546,10 @@ class Game():
                         self._colors[abs(dot.type)],
                         large=True))
                     dot.set_label('?')
-        self._dance_counter = 0
+        if animate:
+            self._dance_counter = 0
+        else:
+            self._dance_counter = 10
         self._dance_step()
 
     def _dance_step(self):
@@ -566,9 +569,9 @@ class Game():
         else:
             self._new_images()
 
-    def new_game(self):
+    def new_game(self, animate=True):
         ''' Start a new game. '''
-        self._all_clear()
+        self._all_clear(animate)
 
     def _new_images(self):
         ''' Select pictures at random '''
