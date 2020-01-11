@@ -37,7 +37,6 @@ from exportpdf import save_pdf
 from arecord import Arecord
 
 from gi.repository import TelepathyGLib
-import dbus
 from sugar3.presence import presenceservice
 
 from collabwrapper import CollabWrapper
@@ -63,10 +62,7 @@ class StoryActivity(activity.Activity):
 
     def __init__(self, handle):
         ''' Initialize the toolbars and the game board '''
-        try:
-            super(StoryActivity, self).__init__(handle)
-        except dbus.exceptions.DBusException as e:
-            _logger.error(str(e))
+        super(StoryActivity, self).__init__(handle)
 
         self._path = activity.get_bundle_path()
         self.datapath = os.path.join(activity.get_activity_root(), 'instance')
