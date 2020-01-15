@@ -179,12 +179,12 @@ class StoryActivity(activity.Activity):
 
     def set_data(self, data):
         _logger.debug('set_data {}'.format(data))
-        self._game.restore_game(data['data'])
+        self._game.restore_game(data['data'].split())
         pass
 
     def get_data(self):
-        _logger.debug('get_data\n{}'.format(dict(data=self._game.save_game())))
-        return dict(data=self._game.save_game())
+        _logger.debug('get_data\n{}'.format(dict(data=' '.join(self._game.save_game())))
+        return dict(data=' '.join(self._game.save_game()))
 
     def close(self, **kwargs):
         aplay.close()
