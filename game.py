@@ -24,6 +24,7 @@ from gettext import gettext as _
 
 import logging
 _logger = logging.getLogger('story-activity')
+_logger.setLevel(logging.DEBUG)
 
 from sugar3.graphics import style
 
@@ -607,7 +608,7 @@ class Game():
 
     def restore_game(self, dot_list):
         ''' Restore a game from the Journal or share '''
-
+        _logger.debug('restore_game {}'.format(dot_list))
         self.set_mode(self._mode)
 
         for i, dot in enumerate(dot_list):
