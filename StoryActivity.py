@@ -174,7 +174,7 @@ class StoryActivity(activity.Activity):
         self.collab = CollabWrapper(self)
         self.collab.connect('message', self._message_cb)
         self.collab.connect('joined', self._joined_cb)
-        self.collab.connect('buddy-joined', self._buddy_joined)
+        #self.collab.connect('buddy-joined', self._buddy_joined)
         self.collab.setup()
 
     def set_data(self, data):
