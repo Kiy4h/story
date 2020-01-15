@@ -183,7 +183,8 @@ class StoryActivity(activity.Activity):
         pass
 
     def get_data(self):
-        _logger.debug('get_data\n{}'.format(dict(data=' '.join(self._game.save_game())))
+        _logger.debug('get_data\n{}'.format(
+            dict(data=' '.join(self._game.save_game()))))
         return dict(data=' '.join(self._game.save_game()))
 
     def close(self, **kwargs):
