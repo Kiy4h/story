@@ -179,7 +179,7 @@ class StoryActivity(activity.Activity):
 
     def set_data(self, data):
         _logger.debug('SET_DATA {}'.format(data))
-        self._game.restore_game(data['data'].split())
+        self._game.restore_game(list(map(int, data['data'].split())))
         pass
 
     def get_data(self):
