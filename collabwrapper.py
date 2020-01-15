@@ -98,7 +98,6 @@ from sugar3.graphics.alert import NotifyAlert
 
 import logging
 _logger = logging.getLogger('CollabWrapper')
-_logger.setLevel(logging.DEBUG)
 
 ACTION_INIT_REQUEST = '!!ACTION_INIT_REQUEST'
 ACTION_INIT_RESPONSE = '!!ACTION_INIT_RESPONSE'
@@ -738,7 +737,7 @@ class OutgoingBlobTransfer(_BaseOutgoingTransfer):
         _BaseOutgoingTransfer.__init__(
             self, buddy, conn, filename, description, mime)
 
-        self._blob = blob
+        self._blob = blob.encode('utf-8')
         self._create_channel(len(self._blob))
 
     def _get_input_stream(self):
