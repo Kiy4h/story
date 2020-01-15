@@ -602,6 +602,7 @@ class Game():
                 self._dots[i].hide()
 
         if self.we_are_sharing:
+            _logger.debug('self.we_are_sharing is True')
             self._parent.send_new_images()
 
     def restore_game(self, dot_list):

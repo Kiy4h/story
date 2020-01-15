@@ -179,11 +179,11 @@ class StoryActivity(activity.Activity):
 
     def set_data(self, data):
         _logger.debug('SET_DATA {}'.format(data))
-        self._game.restore_game(list(map(int, data['data'].split())))
+        self._game.restore_game(data['data'])
         pass
 
     def get_data(self):
-        tmp_data = dict(data=' '.join(list(map(str, self._game.save_game()))))
+        tmp_data = dict(data=self._game.save_game())
         _logger.debug('GET_DATA\n{}'.format(tmp_data))
         return tmp_data
 
@@ -631,14 +631,6 @@ class StoryActivity(activity.Activity):
 
     def after_share_join(self, sharer):
         self._game.set_sharing(True)
-
-    def _buddy_joined(self, sender, buddy):
-        _logger.debug('sender: {}\nbuddy: {}'.format(sender, buddy))
-        # if buddy == self.collab.owner:
-        #    return
-        logging.debug("Join: %s - %s", buddy.props.nick,
-                      buddy.props.color)
-        self.send_new_images()
 
     def _setup_dispatch_table(self):
         ''' Associate tokens with commands. '''
